@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Power System Per-Unit & Power Calculator</title>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --panel-bg: #1e293b;
+            --panel-border: #334155;
+            --accent-cyan: #06b6d4;
+            --accent-blue: #3b82f6;
+            --accent-green: #10b981;
+            --accent-amber: #f59e0b;
+            --accent-red: #ef4444;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --font-mono: 'Fira Code', 'Consolas', monospace;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            padding: 20px;
+            line-height: 1.5;
+        }
+
+        header {
+            margin-bottom: 24px;
+            border-bottom: 1px solid var(--panel-border);
+            padding-bottom: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        h1 {
+            font-size: 1.6rem;
+            color: var(--accent-cyan);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .preset-container {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn {
+            background: #273549;
+            color: var(--text-main);
+            border: 1px solid var(--panel-border);
+            padding: 8px 14px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 0.85rem;
+            transition: all 0.2s;
+        }
+
+        .btn:hover {
+            background: var(--accent-blue);
+            color: #fff;
+            border-color: var(--accent-blue);
+        }
+
+        .main-layout {
+            display: grid;
+            grid-template-columns: 360px 1fr;
+            gap: 20px;
+        }
+
+        @media (max-width: 1024px) {
+            .main-layout {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .panel {
+            background: var(--panel-bg);
+            border: 1px solid var(--panel-border);
+            border-radius: 10px;
+            padding: 18px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+        }
+
+        .panel-title {
+            font-size: 1.05rem;
+            font-weight: 600;
+            color: var(--accent-cyan);
+            margin-bottom: 14px;
+            padding-bottom: 6px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .input-group-title {
+            font-size: 0.85rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--accent-amber);
+            margin: 14px 0 8px 0;
+        }
+
+        .input-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .input-field {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .input-field.full-width {
+            grid-column: span 2;
+        }
+
+        label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        input {
+            background: #0f172a;
+            border: 1px solid var(--panel-border);
+            color: #fff;
+            padding: 6px 10px;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            font-family: var(--font-mono);
+            width: 100%;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: var(--accent-cyan);
+        }
+
+        /* Single Line Diagram Styling */
+        .sld-container {
+            width: 100%;
+            background: #0b1120;
+            border: 1px solid var(--panel-border);
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 20px;
+            overflow-x: auto;
+        }
+
+        svg {
+            width: 100%;
+            min-width: 650px;
+            height: 220px;
+        }
+
+        /* Results Summary Cards */
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .card {
+            background: #152033;
+            border: 1px solid var(--panel-border);
+            border-radius: 8px;
+            padding: 12px;
+            border-left: 4px solid var(--accent-blue);
+        }
+
+        .card.green { border-left-color: var(--accent-green); }
+        .card.amber { border-left-color: var(--accent-amber); }
+        .card.red { border-left-color: var(--accent-red); }
+
+        .card-label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+        }
+
+        .card-value {
+            font-size: 1.25rem;
+            font-weight: 700;
+            font-family: var(--font-mono);
+            margin-top: 4px;
+        }
+
+        .card-subtext {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        /* Formula / Math Breakdown */
+        .math-block {
+            background: #0b1120;
+            border: 1px solid var(--panel-border);
+            border-radius: 6px;
+            padding: 12px;
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            overflow-x: auto;
+            margin-bottom: 12px;
+        }
+
+        .math-title {
+            color: var(--accent-cyan);
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+
+        .highlight {
+            color: var(--accent-amber);
+        }
+
+        .table-custom {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+            margin-top: 10px;
+        }
+
+        .table-custom th, .table-custom td {
+            border: 1px solid var(--panel-border);
+            padding: 8px;
+            text-align: left;
+        }
+
+        .table-custom th {
+            background: #162338;
+            color: var(--accent-cyan);
+        }
+
+        .table-custom tr:nth-child(even) {
+            background: #111a2e;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>⚡ Power System Per-Unit & Power Flow Calculator</h1>
+        <div class="preset-container">
+            <button class="btn" onclick="loadPreset('standard')">Standard Preset</button>
+            <button class="btn" onclick="loadPreset('heavy_load')">Heavy Load</button>
+            <button class="btn" onclick="loadPreset('long_line')">High Line Impedance</button>
+        </div>
+    </header>
+
+    <div class="main-layout">
+        <!-- INPUT PARAMETERS PANEL -->
+        <div class="panel">
+            <div class="panel-title">System Inputs</div>
+
+            <!-- Global Base -->
+            <div class="input-group-title">1. System Base Selection</div>
+            <div class="input-grid">
+                <div class="input-field">
+                    <label>Base Power (S<sub>base</sub>)</label>
+                    <input type="number" id="sBase" value="100" step="10">
+                </div>
+                <div class="input-field">
+                    <label>Zone 1 Base V (V<sub>base1</sub>)</label>
+                    <input type="number" id="vBase1" value="13.8" step="0.1">
+                </div>
+            </div>
+
+            <!-- Generator -->
+            <div class="input-group-title">2. Generator (G<sub>1</sub>)</div>
+            <div class="input-grid">
+                <div class="input-field">
+                    <label>Rating (MVA)</label>
+                    <input type="number" id="sG" value="100">
+                </div>
+                <div class="input-field">
+                    <label>Rated Voltage (kV)</label>
+                    <input type="number" id="vG" value="13.8">
+                </div>
+                <div class="input-field full-width">
+                    <label>Reactance X<sub>G</sub> (%)</label>
+                    <input type="number" id="xG" value="15" step="0.5">
+                </div>
+            </div>
+
+            <!-- Step-Up Transformer T1 -->
+            <div class="input-group-title">3. Transformer T<sub>1</sub> (Step-Up)</div>
+            <div class="input-grid">
+                <div class="input-field">
+                    <label>Rating (MVA)</label>
+                    <input type="number" id="sT1" value="100">
+                </div>
+                <div class="input-field">
+                    <label>Reactance X<sub>T1</sub> (%)</label>
+                    <input type="number" id="xT1" value="10" step="0.5">
+                </div>
+                <div class="input-field">
+                    <label>Primary V (kV)</label>
+                    <input type="number" id="vT1_pri" value="13.8">
+                </div>
+                <div class="input-field">
+                    <label>Secondary V (kV)</label>
+                    <input type="number" id="vT1_sec" value="230">
+                </div>
+            </div>
+
+            <!-- Transmission Line -->
+            <div class="input-group-title">4. Transmission Line (Zone 2)</div>
+            <div class="input-grid">
+                <div class="input-field">
+                    <label>Resistance R<sub>line</sub> (Ω)</label>
+                    <input type="number" id="rLine" value="15" step="1">
+                </div>
+                <div class="input-field">
+                    <label>Reactance X<sub>line</sub> (Ω)</label>
+                    <input type="number" id="xLine" value="80" step="1">
+                </div>
+            </div>
+
+            <!-- Step-Down Transformer T2 -->
+            <div class="input-group-title">5. Transformer T<sub>2</sub> (Step-Down)</div>
+            <div class="input-grid">
+                <div class="input-field">
+                    <label>Rating (MVA)</label>
+                    <input type="number" id="sT2" value="100">
+                </div>
+                <div class="input-field">
+                    <label>Reactance X<sub>T2</sub> (%)</label>
+                    <input type="number" id="xT2" value="10" step="0.5">
+                </div>
+                <div class="input-field">
+                    <label>Primary V (kV)</label>
+                    <input type="number" id="vT2_pri" value="230">
+                </div>
+                <div class="input-field">
+                    <label>Secondary V (kV)</label>
+                    <input type="number" id="vT2_sec" value="69">
+                </div>
+            </div>
+
+            <!-- Load -->
+            <div class="input-group-title">6. Load Demand (Zone 3)</div>
+            <div class="input-grid">
+                <div class="input-field">
+                    <label>Active Power P<sub>L</sub> (MW)</label>
+                    <input type="number" id="pLoad" value="80" step="5">
+                </div>
+                <div class="input-field">
+                    <label>Reactive Power Q<sub>L</sub> (+MVAR)</label>
+                    <input type="number" id="qLoad" value="30" step="5">
+                </div>
+                <div class="input-field full-width">
+                    <label>Load Bus Actual Voltage (kV)</label>
+                    <input type="number" id="vLoadActual" value="66" step="0.5">
+                </div>
+            </div>
+        </div>
+
+        <!-- VISUALIZATION & OUTPUT PANEL -->
+        <div>
+            <!-- Single Line Diagram SVG -->
+            <div class="sld-container">
+                <svg id="sldSvg" viewBox="0 0 800 200">
+                    <!-- Dynamic rendering will happen in JS -->
+                </svg>
+            </div>
