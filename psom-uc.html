@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Indian Grid Simulator | Rushabh Vanara</title>
+    <style>
+        :root {
+            --bg: #0a0f1e;
+            --card: #161e31;
+            --text: #e2e8f0;
+            --accent: #fbbf24; 
+            --solar: #fde047;
+            --coal: #64748b;
+            --hydro: #38bdf8;
+            --danger: #ef4444;
+            --success: #22c55e;
+        }
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        /* Home Link Top Left */
+        .home-link {
+            position: absolute;
+            top: 15px;
+            left: 20px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+            color: var(--accent);
+            font-size: 0.9rem;
+            font-weight: bold;
+            z-index: 1000;
+            transition: opacity 0.2s;
+        }
+        .home-link:hover { opacity: 0.8; }
+
+        .container-wrapper {
+            padding: 60px 20px 20px 20px;
+            width: 100%;
+            max-width: 1400px;
+            flex: 1;
+        }
+
+        /* Header Stats */
+        .header-strip {
+            display: flex;
+            justify-content: space-between;
+            background: var(--card);
+            padding: 15px 25px;
+            border-radius: 10px;
+            border-bottom: 3px solid var(--accent);
+            margin-bottom: 15px;
+        }
+
+        .stat-box { text-align: center; }
+        .stat-box label { font-size: 0.7rem; color: #94a3b8; text-transform: uppercase; display: block; }
+        .stat-box span { font-size: 1.4rem; font-weight: 800; font-family: monospace; }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: 320px 1fr 300px;
+            gap: 15px;
+        }
+
+        /* Panel Styling */
+        .panel {
+            background: var(--card);
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid #2d3748;
+        }
+
+        .slider-group { margin-bottom: 20px; }
+        .slider-group label { display: block; font-size: 0.85rem; margin-bottom: 5px; color: #cbd5e1; }
+        input[type=range] { width: 100%; cursor: pointer; accent-color: var(--accent); }
+
+        /* Visualizer */
+        .viz-container {
+            position: relative;
+            background: #000;
+            border-radius: 10px;
+            height: 500px;
+            overflow: hidden;
+            border: 1px solid #334155;
+        }
+        canvas { width: 100%; height: 100%; }
+
+        /* Generator List */
+        .gen-list { display: flex; flex-direction: column; gap: 10px; }
+        .gen-card {
+            background: #1e293b;
+            padding: 12px;
+            border-radius: 8px;
+            border-left: 4px solid #475569;
+        }
+        .gen-card.online { border-left-color: var(--success); }
+        .gen-card.starting { border-left-color: var(--accent); }
+        
+        button {
+            width: 100%;
+            padding: 8px;
+            border: none;
+            border-radius: 4px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .btn-commit { background: #334155; color: white; }
+        .online .btn-commit { background: var(--danger); }
+
+        /* Blackout Overlay */
+        #overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(0,0,0,0.9);
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            text-align: center;
+        }
+
+        /* Footer */
+        footer {
+            width: 100%;
+            padding: 30px 0;
+            background: var(--card);
+            text-align: center;
+            border-top: 1px solid #2d3748;
+            margin-top: 40px;
+            font-size: 0.9rem;
+        }
+        footer a { color: var(--accent); text-decoration: none; font-weight: bold; }
+        .heart { color: #ef4444; animation: pulse 1.5s infinite; display: inline-block; }
+        @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.2); } }
+
+        @media (max-width: 1000px) {
+            .dashboard { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Top Left Home Link -->
+    <a href="https://rushabhvanara.github.io" class="home-link">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+        <span>rushabhvanara.github.io</span>
+    </a>
+
+    <div class="container-wrapper">
+        <div class="header-strip">
+            <div class="stat-box">
+                <label>Grid Frequency</label>
+                <span id="freq">50.00 Hz</span>
+            </div>
+            <div class="stat-box">
+                <label>Demand</label>
+                <span id="demand">0 GW</span>
+            </div>
+            <div class="stat-box">
+                <label>Net Supply</label>
+                <span id="supply">0 GW</span>
+            </div>
+            <div class="stat-box">
+                <label>Current Time</label>
+                <span id="clock" style="color: var(--accent); font-family: monospace;">06:00 AM</span>
+            </div>
+        </div>
+
+        <div class="dashboard">
+            <!-- Left: Params -->
+            <div class="panel">
+                <h3 style="margin-top:0; color: var(--accent)">Indian Scenario Params</h3>
+                <div class="slider-group">
+                    <label>Solar Penetration (GW): <b id="val-solar-cap">200</b></label>
+                    <input type="range" id="param-solar-cap" min="0" max="500" value="200">
+                </div>
+                <div class="slider-group">
+                    <label>Coal Cost (₹/kWh): <b id="val-coal-cost">3.5</b></label>
+                    <input type="range" id="param-coal-cost" min="1" max="10" step="0.5" value="3.5">
+                </div>
+                <div class="slider-group">
+                    <label>Industrial Load: <b id="val-demand-mul">1.0</b></label>
+                    <input type="range" id="param-demand-mul" min="0.5" max="2.0" step="0.1" value="1.0">
+                </div>
+            </div>
+
+            <!-- Center: Chart -->
+            <div class="viz-container">
+                <canvas id="mainCanvas"></canvas>
+                <div id="overlay">
+                    <h1 style="color: var(--danger); margin-bottom: 10px;">GRID BLACKOUT</h1>
+                    <p style="margin-bottom: 20px;">Under-Frequency Relay (UFR) Tripped.</p>
+                    <button onclick="resetGrid()" style="width: 180px; background: white; color: black;">BLACKSTART HYDRO</button>
+                </div>
+            </div>
+
+            <!-- Right: Dispatch -->
+            <div class="panel">
+                <h3 style="margin-top:0; color: var(--accent)">Unit Commitment</h3>
+                <div class="gen-list" id="gen-list"></div>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <p>Made with <span class="heart">❤</span> by <a href="https://rushabhvanara.github.io" target="_blank">Rushabh D. Vanara</a></p>
+        <p>Department of Electrical Engineering, Government Polytechnic, Junagadh</p>
+    </footer>
+
+    <script>
+        const canvas = document.getElementById('mainCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        let state = {
+            time: 360, 
+            demand: 0, supply: 0, solar: 0, freq: 50,
+            isBlackout: false, history: [],
+            params: { solarCap: 200, coalCost: 3.5, demandMul: 1.0 }
+        };
+
+        const generators = [
+            { id: 0, name: 'Vindhyachal STPS', type: 'Coal', cap: 300, startup: 120, status: 'offline', progress: 0 },
+            { id: 1, name: 'Mundra Thermal', type: 'Coal', cap: 250, startup: 90, status: 'offline', progress: 0 },
+            { id: 2, name: 'Tehri Hydro', type: 'Hydro', cap: 150, startup: 5, status: 'offline', progress: 0 },
+            { id: 3, name: 'Bhakra Nangal', type: 'Hydro', cap: 100, startup: 5, status: 'offline', progress: 0 }
+        ];
+
+        function init() {
+            document.querySelectorAll('input[type=range]').forEach(el => {
+                el.addEventListener('input', (e) => {
+                    const id = e.target.id.replace('param-', '');
+                    const camelId = id.replace(/-([a-z])/g, g => g[1].toUpperCase());
+                    state.params[camelId] = parseFloat(e.target.value);
+                    document.getElementById('val-' + id).innerText = e.target.value;
+                });
+            });
+            renderGenList();
+            resize();
+            loop();
+        }
+
+        function resize() {
+            canvas.width = canvas.offsetWidth;
+            canvas.height = canvas.offsetHeight;
+        }
+
+        function renderGenList() {
+            const container = document.getElementById('gen-list');
+            container.innerHTML = '';
+            generators.forEach(g => {
+                const div = document.createElement('div');
+                div.className = `gen-card ${g.status}`;
+                div.innerHTML = `
+                    <div style="display:flex; justify-content:space-between; font-weight:bold; font-size:0.85rem">
+                        <span>${g.name}</span>
+                        <span style="color: ${g.type==='Hydro'?'#38bdf8':'#94a3b8'}">${g.type}</span>
+                    </div>
+                    <div style="font-size:0.7rem; margin: 5px 0">Capacity: ${g.cap}GW</div>
+                    <button class="btn-commit" onclick="toggleGen(${g.id})">
+                        ${g.status === 'offline' ? 'COMMIT' : (g.status==='starting'?'SYNCING...':'DESYNC')}
+                    </button>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function toggleGen(id) {
+            if(state.isBlackout && generators[id].type !== 'Hydro') return;
+            const g = generators[id];
+            if (g.status === 'offline') g.status = 'starting';
+            else { g.status = 'offline'; g.progress = 0; }
+            renderGenList();
+        }
+
+        function resetGrid() {
+            state.isBlackout = false; state.freq = 50;
+            generators.forEach(g => { g.status = 'offline'; g.progress = 0; });
+            document.getElementById('overlay').style.display = 'none';
+            renderGenList();
+        }
+
+        function update() {
+            if (state.isBlackout) return;
+            state.time = (state.time + 1) % 1440;
+            let h = Math.floor(state.time/60);
+            document.getElementById('clock').innerText = `${(h%12||12).toString().padStart(2,'0')}:${(state.time%60).toString().padStart(2,'0')} ${h>=12?'PM':'AM'}`;
+
+            // Demand & Solar Logic
+            let baseDemand = 350 + 100 * Math.sin((h - 6) * Math.PI / 12);
+            if (h > 18 && h < 22) baseDemand += 150; 
+            state.demand = baseDemand * state.params.demandMul;
+            state.solar = Math.max(0, Math.sin((h - 6) * Math.PI / 12)) * state.params.solarCap;
+
+            let thermal = 0;
+            generators.forEach(g => {
+                if (g.status === 'starting') {
+                    g.progress++;
+                    if (g.progress >= g.startup) { g.status = 'online'; renderGenList(); }
+                }
+                if (g.status === 'online') thermal += g.cap;
+            });
+
+            state.supply = thermal + state.solar;
+            state.freq += (state.supply - state.demand) * 0.00005;
+            state.freq = 0.99 * state.freq + 0.01 * 50;
+
+            document.getElementById('freq').innerText = state.freq.toFixed(2) + " Hz";
+            document.getElementById('demand').innerText = Math.round(state.demand) + " GW";
+            document.getElementById('supply').innerText = Math.round(state.supply) + " GW";
+
+            state.history.push({ d: state.demand, s: state.supply, solar: state.solar });
+            if (state.history.length > 200) state.history.shift();
+
+            if (state.freq < 48.0 || state.freq > 52.0) {
+                state.isBlackout = true;
+                document.getElementById('overlay').style.display = 'flex';
+            }
+        }
+
+        function draw() {
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            const m = 40; const w = canvas.width - m*2; const h = canvas.height - m*2;
+
+            if (state.history.length < 2) return;
+
+            // Solar Area
+            ctx.fillStyle = 'rgba(253, 224, 71, 0.2)';
+            ctx.beginPath(); ctx.moveTo(m, h+m);
+            state.history.forEach((pt, i) => ctx.lineTo(m + (i/200)*w, (h+m) - (pt.solar/1000)*h));
+            ctx.lineTo(m + (state.history.length-1)/200*w, h+m); ctx.fill();
+
+            // Demand Line
+            ctx.strokeStyle = '#38bdf8'; ctx.lineWidth = 2; ctx.beginPath();
+            state.history.forEach((pt, i) => {
+                let x = m + (i/200)*w, y = (h+m) - (pt.d/1000)*h;
+                if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+            });
+            ctx.stroke();
+
+            // Supply Line
+            ctx.strokeStyle = '#22c55e'; ctx.beginPath();
+            state.history.forEach((pt, i) => {
+                let x = m + (i/200)*w, y = (h+m) - (pt.s/1000)*h;
+                if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+            });
+            ctx.stroke();
+        }
+
+        function loop() {
+            update(); draw(); requestAnimationFrame(loop);
+        }
+
+        window.addEventListener('resize', resize);
+        init();
+    </script>
+</body>
+</html>
