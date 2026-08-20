@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Grid Demand Response Simulation</title>
+    <!-- Chart.js for visualization -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg-color: #f1f5f9;
+            --card-bg: #ffffff;
+            --accent-blue: #2563eb;
+            --accent-green: #059669;
+            --accent-red: #dc2626;
+            --accent-yellow: #d97706;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --border-color: #e2e8f0;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            padding: 20px;
+            line-height: 1.5;
+        }
+
+        /* Top Navigation */
+        .home-link {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            font-weight: 500;
+            margin-bottom: 20px;
+            transition: color 0.2s;
+            width: fit-content;
+        }
+
+        .home-link:hover {
+            color: var(--accent-blue);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.2rem;
+            color: var(--text-main);
+            letter-spacing: -0.025em;
+        }
+
+        .header p {
+            color: var(--text-muted);
+            margin-top: 8px;
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: 320px 1fr;
+            gap: 24px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* Controls Sidebar */
+        .sidebar {
+            background-color: var(--card-bg);
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            border: 1px solid var(--border-color);
+            height: fit-content;
+        }
+
+        .section-title {
+            font-size: 1rem;
+            font-weight: 700;
+            margin-bottom: 15px;
+            padding-bottom: 8px;
+            color: var(--text-main);
+            border-bottom: 2px solid var(--bg-color);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .control-group {
+            margin-bottom: 24px;
+        }
+
+        .control-group label {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            margin-bottom: 10px;
+        }
+
+        .control-group input[type="range"] {
+            width: 100%;
+            accent-color: var(--accent-blue);
+            cursor: pointer;
+        }
+
+        .toggle-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 46px;
+            height: 24px;
+        }
+
+        .switch input { opacity: 0; width: 0; height: 0; }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #cbd5e1;
+            transition: .3s;
+            border-radius: 24px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .3s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider { background-color: var(--accent-green); }
+        input:checked + .slider:before { transform: translateX(22px); }
+
+        .val-display {
+            float: right;
+            color: var(--accent-blue);
+            background: #eff6ff;
+            padding: 2px 8px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+        }
+
+        /* Main Display */
+        .main-content {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        /* Metrics Cards */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 16px;
+        }
+
+        .metric-card {
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            padding: 16px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            border: 1px solid var(--border-color);
+        }
+
+        .metric-title {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+        }
+
+        .metric-value {
+            font-size: 1.25rem;
+            font-weight: 800;
+            margin-top: 8px;
+            color: var(--text-main);
+        }
+
+        .highlight-green { color: var(--accent-green); }
+
+        /* Chart Section */
+        .chart-container {
+            background-color: var(--card-bg);
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            border: 1px solid var(--border-color);
+            height: 500px;
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 40px;
+            padding: 30px;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            border-top: 1px solid var(--border-color);
+        }
+
+        footer a {
+            color: var(--accent-blue);
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .heart { color: #ef4444; }
+
+        @media (max-width: 1100px) {
+            .metrics-grid { grid-template-columns: repeat(3, 1fr); }
+        }
+
+        @media (max-width: 900px) {
+            .dashboard { grid-template-columns: 1fr; }
+            .metrics-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+    </style>
+</head>
+<body>
+
+    <a href="https://rushabhvanara.github.io" class="home-link">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+        <span>rushabhvanara.github.io</span>
+    </a>
+
+    <div class="header">
+        <h1>Smart Grid Demand Response Simulator</h1>
+        <p>Interactive Peak Shaving and Load Shifting Analysis</p>
+    </div>
+
+    <div class="dashboard">
+        <!-- Control Panel -->
+        <div class="sidebar">
+            <div class="section-title">Demand Response</div>
+
+            <div class="toggle-container">
+                <span>Enable DR Program</span>
+                <label class="switch">
+                    <input type="checkbox" id="drToggle" checked onchange="updateSimulation()">
+                    <span class="slider"></span>
+                </label>
+            </div>
+
+            <div class="control-group">
+                <label>Flexible Load Share <span class="val-display" id="flexLoadVal">30%</span></label>
+                <input type="range" id="flexLoad" min="0" max="60" value="30" oninput="updateSimulation()">
+            </div>
+
+            <div class="control-group">
+                <label>Price Elasticity <span class="val-display" id="elasticityVal">0.6</span></label>
+                <input type="range" id="elasticity" min="0.1" max="1.0" step="0.1" value="0.6" oninput="updateSimulation()">
+            </div>
+
+            <div class="section-title">Grid Configuration</div>
+
+            <div class="control-group">
+                <label>Peak Price Multiplier <span class="val-display" id="priceMultVal">2.5x</span></label>
+                <input type="range" id="priceMult" min="1.0" max="4.0" step="0.1" value="2.5" oninput="updateSimulation()">
+            </div>
+
+            <div class="control-group">
+                <label>Transformer Limit <span class="val-display" id="gridLimitVal">85 MW</span></label>
+                <input type="range" id="gridLimit" min="70" max="100" value="85" oninput="updateSimulation()">
+            </div>
+
+            <div class="control-group">
+                <label>Solar Capacity (Peak) <span class="val-display" id="solarPeakVal">15 MW</span></label>
+                <input type="range" id="solarPeak" min="0" max="30" value="15" oninput="updateSimulation()">
+            </div>
+        </div>
+
+        <!-- Main Analytics -->
+        <div class="main-content">
+            <!-- Key Performance Indicators (KPIs) -->
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <div class="metric-title">Peak Load</div>
+                    <div class="metric-value" id="peakValue">0 MW</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-title">Minimum Load</div>
+                    <div class="metric-value" id="minValue">0 MW</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-title">Average Load</div>
+                    <div class="metric-value" id="avgValue">0 MW</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-title">Load Factor</div>
+                    <div class="metric-value" id="lfValue">0%</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-title">Peak Reduction</div>
+                    <div class="metric-value highlight-green" id="peakRedValue">0%</div>
+                </div>
+            </div>
+
+            <!-- Graph Area -->
+            <div class="chart-container">
+                <canvas id="gridChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <p>Made with <span class="heart">❤</span> by <a href="https://rushabhvanara.github.io" target="_blank">Rushabh D. Vanara</a></p>
+        <p>Department of Electrical Engineering, Government Polytechnic, Junagadh</p>
+    </footer>
+
+    <script>
+        // Baseline 24-hour profile (MW)
+        const baseLoadProfile = [
+            35, 32, 30, 31, 35, 45, 68, 82, 85, 75, 70, 68,
+            65, 67, 72, 80, 95, 100, 92, 80, 70, 58, 48, 38
+        ];
+
+        // Base Tariff in INR (₹/kWh)
+        const baseTariff = [
+            4.50, 4.50, 4.50, 4.50, 4.50, 5.00, 6.50, 7.50, 7.50, 6.50, 6.00, 6.00,
+            6.00, 6.00, 6.50, 8.00, 10.0, 12.0, 10.0, 8.00, 6.50, 6.00, 5.00, 4.50
+        ];
+
+        const hours = Array.from({length: 24}, (_, i) => `${i.toString().padStart(2, '0')}:00`);
+        let chart;
+
+        function initChart() {
+            const ctx = document.getElementById('gridChart').getContext('2d');
+            chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: hours,
+                    datasets: [
+                        {
+                            label: 'Base Load (No DR)',
+                            data: [],
+                            borderColor: '#94a3b8',
+                            borderDash: [5, 5],
+                            borderWidth: 2,
+                            pointRadius: 0,
+                            fill: false,
+                            tension: 0.3
+                        },
+                        {
+                            label: 'Optimized Load (DR)',
+                            data: [],
+                            borderColor: '#10b981',
+                            backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                            borderWidth: 3,
+                            fill: true,
+                            tension: 0.3
+                        },
+                        {
+                            label: 'Transformer Limit',
+                            data: [],
+                            borderColor: '#ef4444',
+                            borderWidth: 2,
+                            pointRadius: 0,
+                            fill: false,
+                            borderDash: [2, 2]
+                        },
+                        {
+                            label: 'Tariff (₹)',
+                            data: [],
+                            borderColor: '#3b82f6',
+                            borderWidth: 2,
+                            yAxisID: 'yPrice',
+                            fill: false,
+                            tension: 0.2
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: {
+                        legend: { position: 'top', labels: { usePointStyle: true, boxWidth: 6 } },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) label += ': ';
+                                    if (context.datasetIndex === 3) {
+                                        label += '₹' + context.parsed.y.toFixed(2);
+                                    } else {
+                                        label += context.parsed.y.toFixed(1) + ' MW';
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: { grid: { display: false } },
+                        y: {
+                            title: { display: true, text: 'Power (MW)' },
+                            min: 0,
+                            max: 120,
+                            grid: { color: '#f1f5f9' }
+                        },
+                        yPrice: {
+                            position: 'right',
+                            title: { display: true, text: 'Tariff (₹/kWh)' },
+                            min: 0,
+                            max: 40,
+                            grid: { drawOnChartArea: false }
+                        }
+                    }
+                }
+            });
+        }
+
+        function calculateSolar(peak) {
+            return hours.map((_, i) => (i >= 6 && i <= 18) ? peak * Math.sin(((i - 6) / 12) * Math.PI) : 0);
+        }
+
+        function updateSimulation() {
+            const drEnabled = document.getElementById('drToggle').checked;
+            const flexShare = document.getElementById('flexLoad').value / 100;
+            const elasticity = document.getElementById('elasticity').value;
+            const priceMult = document.getElementById('priceMult').value;
+            const gridLimit = document.getElementById('gridLimit').value;
+            const solarPeak = document.getElementById('solarPeak').value;
+
+            document.getElementById('flexLoadVal').innerText = `${Math.round(flexShare * 100)}%`;
+            document.getElementById('elasticityVal').innerText = elasticity;
+            document.getElementById('priceMultVal').innerText = `${priceMult}x`;
+            document.getElementById('gridLimitVal').innerText = `${gridLimit} MW`;
+            document.getElementById('solarPeakVal').innerText = `${solarPeak} MW`;
+
+            const solarGen = calculateSolar(solarPeak);
+            const dynamicPrices = baseTariff.map(p => p > 7.0 ? p * priceMult : p);
+            const avgPrice = dynamicPrices.reduce((a, b) => a + b, 0) / 24;
+            const netBaseLoad = baseLoadProfile.map((val, i) => Math.max(0, val - solarGen[i]));
+
+            let drLoad = [...netBaseLoad];
+            let totalShed = 0;
+
+            if (drEnabled) {
+                // Shaving
+                drLoad = netBaseLoad.map((load, i) => {
+                    const priceRatio = (dynamicPrices[i] - avgPrice) / avgPrice;
+                    if (priceRatio > 0) {
+                        const shed = load * flexShare * elasticity * Math.min(priceRatio, 1.0);
+                        totalShed += shed;
+                        return load - shed;
+                    }
+                    return load;
+                });
+                // Shifting
+                const offPeakIndices = dynamicPrices.map((p, i) => p < avgPrice ? i : -1).filter(i => i !== -1);
+                const shiftAmt = (totalShed * 0.85) / offPeakIndices.length;
+                offPeakIndices.forEach(idx => drLoad[idx] += shiftAmt);
+            }
+
+            // Calculations
+            const basePeak = Math.max(...netBaseLoad);
+            const drPeak = Math.max(...drLoad);
+            const drMin = Math.min(...drLoad);
+            const avgLoad = drLoad.reduce((a, b) => a + b, 0) / 24;
+            const loadFactor = (avgLoad / drPeak) * 100;
+            const peakRed = ((basePeak - drPeak) / basePeak) * 100;
+
+            // UI Update
+            document.getElementById('peakValue').innerText = `${drPeak.toFixed(1)} MW`;
+            document.getElementById('minValue').innerText = `${drMin.toFixed(1)} MW`;
+            document.getElementById('avgValue').innerText = `${avgLoad.toFixed(1)} MW`;
+            document.getElementById('lfValue').innerText = `${loadFactor.toFixed(1)}%`;
+            document.getElementById('peakRedValue').innerText = `${peakRed.toFixed(1)}%`;
+
+            // Chart Update
+            chart.data.datasets[0].data = netBaseLoad;
+            chart.data.datasets[1].data = drLoad;
+            chart.data.datasets[2].data = Array(24).fill(gridLimit);
+            chart.data.datasets[3].data = dynamicPrices;
+            chart.update();
+        }
+
+        window.onload = () => {
+            initChart();
+            updateSimulation();
+        };
+    </script>
+</body>
+</html>
