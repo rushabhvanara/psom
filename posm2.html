@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Power Control via Transformer Tap Changer</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f7f6;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+        }
+        h1, h2 {
+            text-align: center;
+            color: #1a365d;
+        }
+        .container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .panel {
+            background: #ffffff;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            flex: 1;
+            min-width: 300px;
+        }
+        .control-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        input[type=range] {
+            width: 100%;
+        }
+        .value-display {
+            float: right;
+            color: #2b6cb0;
+            font-weight: bold;
+        }
+        .metric-card {
+            background: #edf2f7;
+            padding: 10px;
+            border-radius: 6px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+        }
+        .metric-title {
+            font-weight: 600;
+        }
+        .metric-value {
+            font-weight: bold;
+            color: #2c5282;
+        }
+        svg {
+            width: 100%;
+            height: 250px;
+            background-color: #fafafa;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Transformer Tap Changer: Real & Reactive Power Control</h1>
+
+    <div class="container">
+        <!-- Control Panel -->
+        <div class="panel">
+            <h2>Controls</h2>
+            
+            <div class="control-group">
+                <label>Voltage Tap Ratio (a) [OLTC]: <span id="tapVal" class="value-display">1.00</span></label>
+                <input type="range" id="tap" min="0.80" max="1.20" step="0.01" value="1.00">
+            </div>
+
+            <div class="control-group">
+                <label>Phase Shift Angle (&alpha;) [Phase Shifter]: <span id="angleVal" class="value-display">0.0°</span></label>
+                <input type="range" id="angle" min="-30" max="30" step="0.5" value="0">
+            </div>
+
+            <div class="control-group">
+                <label>Sending End Voltage (V1): <span id="v1Val" class="value-display">1.00 pu</span></label>
+                <input type="range" id="v1" min="0.9" max="1.1" step="0.01" value="1.00">
+            </div>
+
+            <div class="control-group">
+                <label>Receiving End Voltage (V2): <span id="v2Val" class="value-display">1.00 pu</span></label>
+                <input type="range" id="v2" min="0.9" max="1.1" step="0.01" value="1.00">
+            </div>
+
+            <div class="control-group">
+                <label>Load Angle (&delta;1 - &delta;2): <span id="deltaVal" class="value-display">10.0°</span></label>
+                <input type="range" id="delta" min="-45" max="45" step="1" value="10">
+            </div>
+
+            <div class="control-group">
+                <label>Line Reactance (X): <span id="xVal" class="value-display">0.10 pu</span></label>
+                <input type="range" id="reactance" min="0.05" max="0.5" step="0.01" value="0.10">
+            </div>
+        </div>
+
+        <!-- Simulation Visualization & Results Panel -->
+        <div class="panel">
+            <h2>System Diagram</h2>
+            <svg id="diagram" viewBox="0 0 500 200">
+                <!-- Bus 1 -->
+                <line x1="50" y1="50" x2="50" y2="150" stroke="#2b6cb0" stroke-width="6"/>
+                <text x="35" y="40" font-weight="bold">Bus 1</text>
+                
+                <!-- Bus 2 -->
+                <line x1="450" y1="50" x2="450" y2="150" stroke="#2b6cb0" stroke-width="6"/>
+                <text x="435" y="40" font-weight="bold">Bus 2</text>
+
+                <!-- Transformer -->
+                <circle cx="200" cy="100" r="25" fill="none" stroke="#4a5568" stroke-width="3"/>
+                <circle cx="230" cy="100" r="25" fill="none" stroke="#4a5568" stroke-width="3"/>
+                
+                <!-- Transmission Line -->
+                <line x1="50" y1="100" x2="175" y2="100" stroke="#4a5568" stroke-width="3"/>
+                <line x1="255" y1="100" x2="450" y2="100" stroke="#4a5568" stroke-width="3"/>
+
+                <!-- Power Flow Arrows -->
+                <polygon points="280,95 300,100 280,105" fill="#e53e3e"/>
+                <text x="270" y="85" fill="#e53e3e" font-weight="bold">Flow</text>
+            </svg>
+
+            <h2>Power Flow Output</h2>
+            <div class="metric-card">
+                <span class="metric-title">Active Power Transferred (P):</span>
+                <span id="pResult" class="metric-value">0.00 pu</span>
+            </div>
+            <div class="metric-card">
+                <span class="metric-title">Reactive Power Transferred (Q):</span>
+                <span id="qResult" class="metric-value">0.00 pu</span>
+            </div>
+            <div class="metric-card">
+                <span class="metric-title">Effective Secondary Voltage (a * V1):</span>
+                <span id="vSecResult" class="metric-value">0.00 pu</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // DOM Elements
+        const tapInput = document.getElementById('tap');
+        const angleInput = document.getElementById('angle');
+        const v1Input = document.getElementById('v1');
+        const v2Input = document.getElementById('v2');
+        const deltaInput = document.getElementById('delta');
+        const xInput = document.getElementById('reactance');
+
+        function calculatePowerFlow() {
+            // Read Inputs
+            const a = parseFloat(tapInput.value);
+            const alphaDeg = parseFloat(angleInput.value);
+            const V1 = parseFloat(v1Input.value);
+            const V2 = parseFloat(v2Input.value);
+            const deltaDeg = parseFloat(deltaInput.value);
+            const X = parseFloat(xInput.value);
+
+            // Update DOM Displays
+            document.getElementById('tapVal').innerText = a.toFixed(2);
+            document.getElementById('angleVal').innerText = alphaDeg.toFixed(1) + '°';
+            document.getElementById('v1Val').innerText = V1.toFixed(2) + ' pu';
+            document.getElementById('v2Val').innerText = V2.toFixed(2) + ' pu';
+            document.getElementById('deltaVal').innerText = deltaDeg.toFixed(1) + '°';
+            document.getElementById('xVal').innerText = X.toFixed(2) + ' pu';
+
+            // Convert Angles to Radians
+            const deltaRad = deltaDeg * (Math.PI / 180);
+            const alphaRad = alphaDeg * (Math.PI / 180);
+            const totalAngle = deltaRad + alphaRad;
+
+            // Power Calculations
+            // P = (a * V1 * V2 / X) * sin(delta + alpha)
+            const P = (a * V1 * V2 / X) * Math.sin(totalAngle);
+
+            // Q = [ (a * V1)^2 - a * V1 * V2 * cos(delta + alpha) ] / X
+            const Q = (Math.pow(a * V1, 2) - (a * V1 * V2 * Math.cos(totalAngle))) / X;
+
+            const vSec = a * V1;
+
+            // Render Results
+            document.getElementById('pResult').innerText = P.toFixed(3) + ' pu';
+            document.getElementById('qResult').innerText = Q.toFixed(3) + ' pu';
+            document.getElementById('vSecResult').innerText = vSec.toFixed(3) + ' pu';
+        }
+
+        // Event Listeners
+        [tapInput, angleInput, v1Input, v2Input, deltaInput, xInput].forEach(element => {
+            element.addEventListener('input', calculatePowerFlow);
+        });
+
+        // Initial Calculation
+        calculatePowerFlow();
+    </script>
+<footer style="text-align: center;">
+    <p>© Rushabh D. Vanara | Department of Electrical Engineering, Government Polytechnic, Junagadh</p>
+</footer>
+</body>
+</html>
