@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unit 3 | Power System Operation and Management</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --brand-primary: #2563eb;
+            --brand-dark: #0f172a;
+            --bg-main: #f8fafc;
+            --bg-card: #ffffff;
+            --text-heading: #1e293b;
+            --text-body: #64748b;
+            --border: #e2e8f0;
+            --radius-lg: 16px;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: var(--bg-main);
+            color: var(--text-body);
+            line-height: 1.6;
+        }
+
+        header {
+            background: var(--brand-dark);
+            color: white;
+            padding: 60px 20px;
+            text-align: center;
+            border-bottom: 4px solid var(--brand-primary);
+        }
+
+        .dept-name {
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-weight: 700;
+            color: #93c5fd;
+            margin-bottom: 10px;
+            display: block;
+        }
+
+        .course-title {
+            font-size: 1.8rem;
+            font-weight: 800;
+            margin-bottom: 15px;
+            line-height: 1.2;
+        }
+
+        .unit-title {
+            max-width: 800px;
+            margin: 0 auto;
+            font-size: 1.1rem;
+            color: #cbd5e1;
+            font-weight: 400;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        .pdf-card {
+            background: var(--bg-card);
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border);
+            margin-bottom: 50px;
+            overflow: hidden;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+
+        .pdf-header {
+            padding: 20px;
+            background: #fff;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .title-area .chapter {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            font-weight: 800;
+            color: var(--brand-primary);
+            display: block;
+        }
+
+        .title-area h2 {
+            font-size: 1.1rem;
+            color: var(--text-heading);
+            font-weight: 700;
+        }
+
+        .btn-download {
+            text-decoration: none;
+            font-size: 0.75rem;
+            font-weight: 700;
+            padding: 10px 18px;
+            background: #f1f5f9;
+            color: var(--brand-dark);
+            border-radius: 8px;
+            transition: 0.3s;
+        }
+
+        .btn-download:hover {
+            background: var(--brand-primary);
+            color: white;
+        }
+
+        .viewer-wrapper {
+            position: relative;
+            width: 100%;
+            height: 700px; /* Large view for reading */
+            background: #f1f5f9;
+        }
+
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+
+        footer {
+            text-align: center;
+            padding: 50px 20px;
+            background: white;
+            border-top: 1px solid var(--border);
+            color: var(--text-body);
+        }
+
+        footer a {
+            color: var(--brand-primary);
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .heart { color: #ef4444; }
+
+        @media (max-width: 600px) {
+            header { padding: 40px 15px; }
+            .course-title { font-size: 1.4rem; }
+            .viewer-wrapper { height: 500px; }
+            .pdf-header { flex-direction: column; align-items: flex-start; gap: 15px; }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <span class="dept-name">GP Junagadh | Electrical Engineering Department</span>
+        <h1 class="course-title">Power System Operation and Management <br>(DI05000191) LEARNING MATERIAL</h1>
+        <p class="unit-title">Unit 2: Power System Operation, Control and Load Dispatch</p>
+    </header>
+
+    <div class="container" id="pdf-container">
+        <!-- PDFs will load here via JavaScript -->
+    </div>
+
+    <footer>
+        <p>Made with <span class="heart">❤</span> by <a href="https://rushabhvanara.github.io" target="_blank">Rushabh D. Vanara</a></p>
+        <p style="font-size: 0.85rem; margin-top: 5px;">Department of Electrical Engineering, Government Polytechnic, Junagadh</p>
+    </footer>
+
+    <script>
+        /**
+         * Configuration:
+         * We use raw.githubusercontent.com to ensure Google Viewer can access the actual file.
+         */
+        const totalFiles = 7;
+        const baseUrl = "https://raw.githubusercontent.com/rushabhvanara/psom/main/psompdfs/PSOM2.";
+        const container = document.getElementById('pdf-container');
+
+        for (let i = 1; i <= totalFiles; i++) {
+            const fileUrl = `${baseUrl}${i}.pdf`;
+            // Google Docs Viewer URL
+            const viewerUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(fileUrl)}&embedded=true`;
+
+            const card = document.createElement('div');
+            card.className = 'pdf-card';
+            card.innerHTML = `
+                <div class="pdf-header">
+                    <div class="title-area">
+                        <span class="chapter">Topic 3.${i}</span>
+                        <h2>Learning Material Part ${i}</h2>
+                    </div>
+                    <a href="${fileUrl}" target="_blank" class="btn-download">Download PDF</a>
+                </div>
+                <div class="viewer-wrapper">
+                    <iframe src="${viewerUrl}"></iframe>
+                </div>
+            `;
+            container.appendChild(card);
+        }
+    </script>
+
+</body>
+</html>
