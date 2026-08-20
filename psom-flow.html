@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Transmission Line Power Flow Demo RDV</title>
+    
+    <!-- MathJax for LaTeX Equations -->
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    
+    <!-- Chart.js for Waveforms -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background-color: #f4f4f9; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            padding: 20px; 
+            margin: 0;
+        }
+        .container { 
+            background: #ffffff; 
+            border: 1px solid #ccc; 
+            padding: 25px; 
+            width: 850px; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1); 
+            border-radius: 8px; 
+        }
+        h2 { 
+            margin-top: 0; 
+            font-size: 1.4rem; 
+            color: #333; 
+            border-bottom: 2px solid #eee; 
+            padding-bottom: 10px; 
+            text-align: center;
+        }
+        
+        .top-section { position: relative; height: 220px; background: #fafafa; border: 1px solid #ddd; margin-bottom: 20px; border-radius: 4px; }
+        canvas#diagramCanvas { width: 100%; height: 100%; }
+
+        .controls { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-bottom: 20px; }
+        .control-group { border: 1px solid #e0e0e0; padding: 15px; border-radius: 6px; background: #fdfdfd; }
+        .control-group strong { display: block; margin-bottom: 10px; color: #555; }
+        .control-group label { display: inline-block; width: 85px; font-size: 0.85rem; color: #666; }
+        .control-group input { width: 65px; text-align: center; border: 1px solid #ccc; border-radius: 3px; padding: 2px; }
+
+        .results { background: #f0f7ff; padding: 15px; border: 1px solid #d0e0f0; margin-bottom: 20px; display: flex; justify-content: space-around; border-radius: 6px; }
+        .results div { font-size: 1rem; color: #2c3e50; }
+        .results strong { color: #007bff; font-size: 1.1rem; }
+
+        .equations { font-size: 0.95rem; margin-bottom: 20px; padding: 15px; background: #fff; border: 1px solid #eee; border-radius: 6px; text-align: center; }
+        
+        .chart-container { width: 100%; height: 320px; background: white; border: 1px solid #ddd; border-radius: 4px; padding: 10px; box-sizing: border-box; }
+
+        /* Footer Styling */
+        footer {
+            margin-top: 30px;
+            padding: 20px;
+            width: 100%;
+            max-width: 850px;
+            text-align: center;
+            color: #555;
+            border-top: 1px solid #ddd;
+            line-height: 1.6;
+        }
+        .heart { color: #e74c3c; }
+        .affiliation { font-size: 0.9rem; color: #7f8c8d; margin-top: 5px; }
+        .copyright { font-size: 0.8rem; margin-top: 10px; color: #95a5a6; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Transmission Line Power Flow Demo RDV</h2>
+
+    <!-- Diagram Area -->
+    <div class="top-section">
+        <canvas id="diagramCanvas" width="800" height="220"></canvas>
+    </div>
+
+    <!-- Inputs -->
+    <div class="controls">
+        <div class="control-group">
+            <strong>Source 1 (V1)</strong>
+            <label>V1 (kV):</label> <input type="number" id="v1" value="275" step="1" oninput="compute()"><br>
+            <label>P1 (deg):</label> <input type="number" id="p1" value="0" step="1" oninput="compute()">
+        </div>
+
+        <div class="control-group">
+            <strong>Line & Base</strong>
+            <label>jX (Ω):</label> <input type="number" id="lineX" value="62.83" step="0.1" oninput="compute()"><br>
+            <label>Vbase (kV):</label> <input type="number" id="vbase" value="275" step="1" oninput="compute()">
+        </div>
+
+        <div class="control-group">
+            <strong>Source 2 (V2)</strong>
+            <label>V2 (kV):</label> <input type="number" id="v2" value="273" step="1" oninput="compute()"><br>
+            <label>P2 (deg):</label> <input type="number" id="p2" value="-10" step="1" oninput="compute()">
+        </div>
+    </div>
+
+    <!-- Results -->
+    <div class="results">
+        <div>Real Power (P): <strong id="resP">0</strong> MW</div>
+        <div>Reactive Power (Q): <strong id="resQ">0</strong> MVAR</div>
+    </div>
+
+    <!-- LaTeX Equations -->
+    <div class="equations">
+        \[P_1 = \frac{V_1 V_2}{X} \sin (\delta_1-\delta_2)\]
+        \[Q_1 = \frac{V_1^2}{X}-\frac{(V_1 V_2)}{X} \cos (\delta_1-\delta_2)\]
+    </div>
+
+    <!-- Waveform Plot -->
+    <div class="chart-container">
+        <canvas id="waveformChart"></canvas>
+    </div>
+</div>
+
+<!-- Updated Footer -->
+<footer>
+    <div>Made with <span class="heart">♥</span> by</div>
+    <div style="font-weight: bold; font-size: 1.1rem; color: #2c3e50; margin: 5px 0;">Rushabh D. Vanara</div>
+    <div class="affiliation">Department of Electrical Engineering, Government Polytechnic, Junagadh</div>
+    <div class="copyright">&copy; 2026 All rights reserved.</div>
+</footer>
+
+<script>
+    const canvas = document.getElementById('diagramCanvas');
+    const ctx = canvas.getContext('2d');
+    let chart;
+
+    function drawArrow(x, y, length, direction, color, label) {
+        if (color === 'transparent') return;
+        ctx.strokeStyle = color;
+        ctx.fillStyle = color;
+        ctx.lineWidth = 3;
+        
+        ctx.beginPath();
+        let headlen = 10;
+        let endX = x + (direction === 'right' ? length : -length);
+        
+        ctx.moveTo(x, y);
+        ctx.lineTo(endX, y);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(endX, y);
+        let arrowDir = direction === 'right' ? -1 : 1;
+        ctx.lineTo(endX + arrowDir * headlen, y - 5);
+        ctx.lineTo(endX + arrowDir * headlen, y + 5);
+        ctx.fill();
+
+        ctx.font = "12px Arial";
+        ctx.fillText(label, x + (length/3), y - 10);
+    }
+
+    function drawDiagram(p, q) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        ctx.strokeStyle = "#333";
+        ctx.lineWidth = 8;
+        ctx.beginPath(); ctx.moveTo(150, 40); ctx.lineTo(150, 140); ctx.stroke(); // Bus 1
+        ctx.beginPath(); ctx.moveTo(650, 40); ctx.lineTo(650, 140); ctx.stroke(); // Bus 2
+        
+        ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(150, 90); ctx.lineTo(650, 90); ctx.stroke();
+        
+        ctx.fillStyle = "black";
+        ctx.font = "bold 14px Arial";
+        ctx.fillText("Source 1", 120, 30);
+        ctx.fillText("Source 2", 620, 30);
+
+        let pColor = Math.abs(p) < 0.1 ? 'transparent' : '#e74c3c';
+        let pDir = p >= 0 ? 'right' : 'left';
+        let pStart = p >= 0 ? 300 : 500;
+        drawArrow(pStart, 80, 150, pDir, pColor, "P Flow");
+
+        let qColor = Math.abs(q) < 0.1 ? 'transparent' : '#3498db';
+        let qDir = q >= 0 ? 'right' : 'left';
+        let qStart = q >= 0 ? 300 : 500;
+        drawArrow(qStart, 115, 150, qDir, qColor, "Q Flow");
+    }
+
+    function initChart() {
+        const ctxChart = document.getElementById('waveformChart').getContext('2d');
+        chart = new Chart(ctxChart, {
+            type: 'line',
+            data: {
+                labels: Array.from({length: 37}, (_, i) => i * 10),
+                datasets: [
+                    { label: 'V1 (Bus 1)', borderColor: '#3498db', data: [], borderWidth: 2.5, pointRadius: 0, fill: false, tension: 0.4 },
+                    { label: 'V2 (Bus 2)', borderColor: '#e67e22', data: [], borderWidth: 2.5, pointRadius: 0, fill: false, tension: 0.4 }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: { title: { display: true, text: 'Angle (degrees)' } },
+                    y: { min: -1.5, max: 1.5, title: { display: true, text: 'Voltage (pu)' } }
+                },
+                plugins: { legend: { position: 'top' } },
+                animation: false
+            }
+        });
+    }
+
+    function compute() {
+        const V1 = parseFloat(document.getElementById('v1').value) || 0;
+        const Ph1_deg = parseFloat(document.getElementById('p1').value) || 0;
+        const Ph1 = Ph1_deg * Math.PI / 180;
+        const V2 = parseFloat(document.getElementById('v2').value) || 0;
+        const Ph2_deg = parseFloat(document.getElementById('p2').value) || 0;
+        const Ph2 = Ph2_deg * Math.PI / 180;
+        const X = parseFloat(document.getElementById('lineX').value) || 1;
+        const Vbase = parseFloat(document.getElementById('vbase').value) || 1;
+
+        const P = ((V1 * V2) / X) * Math.sin(Ph1 - Ph2);
+        const Q = ((V1 ** 2) / X) - (((V1 * V2) / X) * Math.cos(Ph1 - Ph2));
+
+        document.getElementById('resP').innerText = P.toFixed(1);
+        document.getElementById('resQ').innerText = Q.toFixed(1);
+
+        drawDiagram(P, Q);
+
+        const data1 = [];
+        const data2 = [];
+        for (let deg = 0; deg <= 360; deg += 10) {
+            let rad = deg * Math.PI / 180;
+            data1.push((V1 / Vbase) * Math.sin(rad + Ph1));
+            data2.push((V2 / Vbase) * Math.sin(rad + Ph2));
+        }
+        chart.data.datasets[0].data = data1;
+        chart.data.datasets[1].data = data2;
+        chart.update();
+    }
+
+    window.onload = () => {
+        initChart();
+        compute();
+    };
+</script>
+
+</body>
+</html>
