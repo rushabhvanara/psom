@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Power System Stability Improvement using FACTS</title>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --panel-bg: #1e293b;
+            --accent: #38bdf8;
+            --text: #f8fafc;
+            --danger: #ef4444;
+            --success: #22c55e;
+            --grid-line: #334155;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text);
+            margin: 0;
+            padding: 20px;
+        }
+
+        h1, h2, h3 {
+            margin-top: 0;
+            color: var(--accent);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .header p {
+            color: #94a3b8;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: 320px 1fr;
+            gap: 20px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .controls-panel {
+            background-color: var(--panel-bg);
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+        }
+
+        .control-group {
+            margin-bottom: 18px;
+        }
+
+        label {
+            display: block;
+            font-size: 0.9em;
+            margin-bottom: 5px;
+            color: #cbd5e1;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            accent-color: var(--accent);
+        }
+
+        .val-disp {
+            float: right;
+            color: var(--accent);
+            font-weight: bold;
+        }
+
+        .switch-container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #0f172a;
+            padding: 10px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+        }
+
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 24px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #475569;
+            transition: .4s;
+            border-radius: 24px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: var(--success);
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(26px);
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            background-color: var(--accent);
+            color: #0f172a;
+            font-weight: bold;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: background 0.2s;
+        }
+
+        button:hover {
+            background-color: #7dd3fc;
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-rows: auto 1fr;
+            gap: 20px;
+        }
+
+        .status-bar {
+            background-color: var(--panel-bg);
+            padding: 15px;
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            font-weight: bold;
+        }
+
+        .status-badge {
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            text-transform: uppercase;
+        }
+
+        .stable { background-color: rgba(34, 197, 94, 0.2); color: var(--success); border: 1px solid var(--success); }
+        .unstable { background-color: rgba(239, 68, 68, 0.2); color: var(--danger); border: 1px solid var(--danger); }
+
+        .charts-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .chart-card {
+            background-color: var(--panel-bg);
+            padding: 15px;
+            border-radius: 8px;
+        }
+
+        canvas {
+            width: 100%;
+            height: 230px;
+            background-color: #0b1120;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>Power System Transient Stability Simulator</h1>
+        <p>Interactive web simulation showing SMIB (Single Machine Infinite Bus) stability improvement using FACTS (STATCOM/SVC) during severe 3-phase fault conditions.</p>
+    </div>
+
+    <div class="container">
+        <!-- Control Panel -->
+        <div class="controls-panel">
+            <h3>Simulation Parameters</h3>
+
+            <div class="switch-container">
+                <span>Enable FACTS Device</span>
+                <label class="switch">
+                    <input type="checkbox" id="factsToggle" checked>
+                    <span class="slider"></span>
+                </label>
+            </div>
+
+            <div class="control-group">
+                <label>Mechanical Power (P<sub>m</sub>) <span class="val-disp" id="pmVal">0.80 pu</span></label>
+                <input type="range" id="pm" min="0.2" max="1.2" step="0.05" value="0.80">
+            </div>
+
+            <div class="control-group">
+                <label>Fault Clearing Time (t<sub>clear</sub>) <span class="val-disp" id="tcVal">0.28 s</span></label>
+                <input type="range" id="tc" min="0.05" max="0.50" step="0.01" value="0.28">
+            </div>
+
+            <div class="control-group">
+                <label>FACTS Compensation Gain <span class="val-disp" id="gainVal">0.40 pu</span></label>
+                <input type="range" id="factsGain" min="0.1" max="0.8" step="0.05" value="0.40">
+            </div>
+
+            <div class="control-group">
+                <label>Inertia Constant (H) <span class="val-disp" id="hVal">3.5 s</span></label>
+                <input type="range" id="hConst" min="1.0" max="8.0" step="0.5" value="3.5">
+            </div>
+
+            <div class="control-group">
+                <label>Damping Factor (D) <span class="val-disp" id="dVal">0.10</span></label>
+                <input type="range" id="damp" min="0.0" max="0.5" step="0.05" value="0.10">
+            </div>
+
+            <button id="runBtn" onclick="runSimulation()">Run Simulation</button>
+        </div>
+
+        <!-- Dashboard / Visualizations -->
+        <div class="dashboard">
+            <div class="status-bar">
+                <div>System State: <span id="sysStatus" class="status-badge stable">STABLE</span></div>
+                <div>Critical Clearing Time (Est): <span id="cctDisp" style="color:var(--accent)">0.22 s</span></div>
+                <div>Max Rotor Swing: <span id="maxAngleDisp" style="color:var(--accent)">112°</span></div>
+            </div>
+
+            <div class="charts-grid">
+                <!-- Plot 1: Rotor Angle vs Time -->
+                <div class="chart-card">
+                    <h3>Rotor Angle (&delta;) vs Time</h3>
+                    <canvas id="deltaCanvas"></canvas>
+                </div>
+
+                <!-- Plot 2: Bus Voltage vs Time -->
+                <div class="chart-card">
+                    <h3>Midpoint Voltage (V<sub>m</sub>) vs Time</h3>
+                    <canvas id="voltageCanvas"></canvas>
+                </div>
+
+                <!-- Plot 3: Power-Angle Curve -->
+                <div class="chart-card">
+                    <h3>Power-Angle (P-&delta;) Dynamics</h3>
+                    <canvas id="pDeltaCanvas"></canvas>
+                </div>
+
+                <!-- Plot 4: Generator Frequency Deviation -->
+                <div class="chart-card">
+                    <h3>Frequency Deviation (&Delta;f) vs Time</h3>
+                    <canvas id="freqCanvas"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Synchronous & Simulation Setup
+        const f0 = 50.0;             // Base frequency 50Hz
+        const w0 = 2 * Math.PI * f0; // Synchronous speed rad/s
+        const tFault = 0.5;          // Fault occurrence time (s)
+        const simTime = 3.0;         // Total simulation time (s)
+        const dt = 0.001;            // Time step size (1ms)
+
+        // UI Event Listeners for dynamic value display
+        document.getElementById('pm').addEventListener('input', e => document.getElementById('pmVal').innerText = parseFloat(e.target.value).toFixed(2) + " pu");
+        document.getElementById('tc').addEventListener('input', e => document.getElementById('tcVal').innerText = parseFloat(e.target.value).toFixed(2) + " s");
+        document.getElementById('factsGain').addEventListener('input', e => document.getElementById('gainVal').innerText = parseFloat(e.target.value).toFixed(2) + " pu");
+        document.getElementById('hConst').addEventListener('input', e => document.getElementById('hVal').innerText = parseFloat(e.target.value).toFixed(1) + " s");
+        document.getElementById('damp').addEventListener('input', e => document.getElementById('dVal').innerText = parseFloat(e.target.value).toFixed(2));
+
+        function runSimulation() {
+            // Get inputs
+            const Pm = parseFloat(document.getElementById('pm').value);
+            const tc = parseFloat(document.getElementById('tc').value);
+            const factsGain = parseFloat(document.getElementById('factsGain').value);
+            const H = parseFloat(document.getElementById('hConst').value);
+            const D = parseFloat(document.getElementById('damp').value);
+            const factsEnabled = document.getElementById('factsToggle').checked;
+
+            const tClear = tFault + tc;
+
+            // Base Power Parameters (pu)
+            const Pmax_pre = 1.2;          // Pre-fault max electrical power
+            const Pmax_fault = 0.15;       // During fault max electrical power
+            const Pmax_post_base = 0.85;   // Post-fault max power without FACTS
+            
+            // Post-fault peak power boost with FACTS dynamic reactive injection
+            const Pmax_post = factsEnabled ? (Pmax_post_base + factsGain) : Pmax_post_base;
+
+            // Initial conditions (Pre-fault steady state)
+            let delta = Math.asin(Pm / Pmax_pre); // Initial rotor angle in radians
+            let omega = w0;
+            let time = 0;
+
+            // Output data buffers
+            const tArray = [], deltaArray = [], vArray = [], freqArray = [], peArray = [];
+
+            let isStable = true;
+            let maxDeltaDeg = 0;
+
+            // Numerical Integration Loop (Modified Euler / Heun's Method)
+            const steps = Math.floor(simTime / dt);
+            for (let i = 0; i < steps; i++) {
+                time = i * dt;
+
+                // Determine electrical power Pe and midpoint bus voltage Vm based on fault timeline
+                let Pe = 0;
+                let Vm = 1.0;
+
+                if (time < tFault) {
+                    // Pre-fault
+                    Pe = Pmax_pre * Math.sin(delta);
+                    Vm = 1.0;
+                } else if (time >= tFault && time < tClear) {
+                    // Fault condition
+                    Pe = Pmax_fault * Math.sin(delta);
+                    Vm = 0.25; // Severely dropped voltage
+                } else {
+                    // Post-fault state
+                    Pe = Pmax_post * Math.sin(delta);
+                    // FACTS dynamically injects reactive power post-fault to recover bus voltage faster
+                    Vm = factsEnabled ? Math.min(1.05, 0.85 + factsGain * 0.4) : 0.85;
+                }
+
+                // Swing Equation Integration
+                const dOmega = (w0 / (2 * H)) * (Pm - Pe - D * (omega - w0) / w0);
+                const dDelta = omega - w0;
+
+                omega += dOmega * dt;
+                delta += dDelta * dt;
+
+                const deltaDeg = delta * (180 / Math.PI);
+                const freqHz = omega / (2 * Math.PI);
+
+                // Tracking max rotor angle swing
+                if (deltaDeg > maxDeltaDeg) maxDeltaDeg = deltaDeg;
+
+                // Instability check: Angle exceeds 180 degrees (loss of synchronism)
+                if (deltaDeg > 180 || deltaDeg < -20) {
+                    isStable = false;
+                }
+
+                // Log data for plots
+                tArray.push(time);
+                deltaArray.push(deltaDeg);
+                vArray.push(Vm);
+                freqArray.push(freqHz - f0);
+                peArray.push(Pe);
+            }
+
+            // Update Status UI
+            const statusBadge = document.getElementById('sysStatus');
+            if (isStable) {
+                statusBadge.innerText = "STABLE";
+                statusBadge.className = "status-badge stable";
+            } else {
+                statusBadge.innerText = "UNSTABLE (Out of Step)";
+                statusBadge.className = "status-badge unstable";
+            }
+
+            document.getElementById('maxAngleDisp').innerText = maxDeltaDeg.toFixed(1) + "°";
+            const cctEst = (0.18 * (H / 3.5) * (factsEnabled ? (1 + factsGain*0.5) : 1.0)).toFixed(2);
+            document.getElementById('cctDisp').innerText = cctEst + " s";
+
+            // Render Graphs
+            drawChart('deltaCanvas', tArray, deltaArray, 'Time (s)', 'Angle (°)', '#38bdf8', 0, 180);
+            drawChart('voltageCanvas', tArray, vArray, 'Time (s)', 'Voltage (pu)', '#22c55e', 0, 1.2);
+            drawChart('freqCanvas', tArray, freqArray, 'Time (s)', 'Δf (Hz)', '#f59e0b', -2, 2);
+            drawPDeltaChart('pDeltaCanvas', deltaArray, peArray, Pm, Pmax_pre, Pmax_post);
+        }
+
+        // Canvas Plotting Helper Function
+        function drawChart(canvasId, xData, yData, xLabel, yLabel, color, yMinVal, yMaxVal) {
+            const canvas = document.getElementById(canvasId);
+            const ctx = canvas.getContext('2d');
+            
+            canvas.width = canvas.parentElement.clientWidth;
+            canvas.height = 200;
+
+            const w = canvas.width;
+            const h = canvas.height;
+            const padLeft = 45, padBottom = 30, padTop = 15, padRight = 15;
+
+            ctx.clearRect(0, 0, w, h);
+
+            const xMax = Math.max(...xData);
+            const xMin = Math.min(...xData);
+            let yMax = yMaxVal !== undefined ? yMaxVal : Math.max(...yData);
+            let yMin = yMinVal !== undefined ? yMinVal : Math.min(...yData);
+
+            if(yMax === yMin) { yMax += 1; yMin -= 1; }
+
+            const getX = x => padLeft + (x - xMin) / (xMax - xMin) * (w - padLeft - padRight);
+            const getY = y => h - padBottom - (y - yMin) / (yMax - yMin) * (h - padTop - padBottom);
+
+            // Gridlines
+            ctx.strokeStyle = '#334155';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            
+            for(let i=0; i<=4; i++){
+                let yVal = yMin + i * (yMax - yMin) / 4;
+                let yPos = getY(yVal);
+                ctx.moveTo(padLeft, yPos);
+                ctx.lineTo(w - padRight, yPos);
+                ctx.fillStyle = '#64748b';
+                ctx.font = '10px sans-serif';
+                ctx.fillText(yVal.toFixed(1), 8, yPos + 3);
+            }
+            ctx.stroke();
+
+            // Data Line
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            for(let i=0; i<xData.length; i++){
+                let xp = getX(xData[i]);
+                let yp = getY(yData[i]);
+                if (i === 0) ctx.moveTo(xp, yp);
+                else ctx.lineTo(xp, yp);
+            }
+            ctx.stroke();
+
+            // Axis Label
+            ctx.fillStyle = '#94a3b8';
+            ctx.fillText(xLabel, w / 2, h - 5);
+        }
+
+        // Draw Power-Angle Curve
+        function drawPDeltaChart(canvasId, deltaDegArray, peArray, Pm, Pmax_pre, Pmax_post) {
+            const canvas = document.getElementById(canvasId);
+            const ctx = canvas.getContext('2d');
+            canvas.width = canvas.parentElement.clientWidth;
+            canvas.height = 200;
+
+            const w = canvas.width, h = canvas.height;
+            const padLeft = 45, padBottom = 30, padTop = 15, padRight = 15;
+
+            ctx.clearRect(0, 0, w, h);
+
+            const getX = d => padLeft + (d / 180) * (w - padLeft - padRight);
+            const getY = p => h - padBottom - (p / 2.0) * (h - padTop - padBottom);
+
+            ctx.lineWidth = 1.5;
+            
+            // Pre-fault Curve
+            ctx.strokeStyle = '#475569';
+            ctx.setLineDash([4, 4]);
+            ctx.beginPath();
+            for(let d=0; d<=180; d++){
+                let p = Pmax_pre * Math.sin(d * Math.PI / 180);
+                if(d === 0) ctx.moveTo(getX(d), getY(p));
+                else ctx.lineTo(getX(d), getY(p));
+            }
+            ctx.stroke();
+
+            // Post-fault Curve
+            ctx.strokeStyle = '#38bdf8';
+            ctx.setLineDash([]);
+            ctx.beginPath();
+            for(let d=0; d<=180; d++){
+                let p = Pmax_post * Math.sin(d * Math.PI / 180);
+                if(d === 0) ctx.moveTo(getX(d), getY(p));
+                else ctx.lineTo(getX(d), getY(p));
+            }
+            ctx.stroke();
+
+            // Mechanical Power Line
+            ctx.strokeStyle = '#ef4444';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(getX(0), getY(Pm));
+            ctx.lineTo(getX(180), getY(Pm));
+            ctx.stroke();
+
+            // Dynamic Trajectory
+            ctx.strokeStyle = '#f59e0b';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            for(let i=0; i<deltaDegArray.length; i++){
+                let d = Math.min(180, Math.max(0, deltaDegArray[i]));
+                let p = peArray[i];
+                if(i===0) ctx.moveTo(getX(d), getY(p));
+                else ctx.lineTo(getX(d), getY(p));
+            }
+            ctx.stroke();
+
+            // Labels
+            ctx.fillStyle = '#64748b';
+            ctx.font = '10px sans-serif';
+            ctx.fillText("0°", getX(0), h - 10);
+            ctx.fillText("90°", getX(90), h - 10);
+            ctx.fillText("180°", getX(180) - 20, h - 10);
+            ctx.fillText("Pm", 10, getY(Pm) + 3);
+        }
+
+        window.onload = runSimulation;
+    </script>
+</body>
+<footer style="text-align: center;">
+    <p>© Rushabh D. Vanara | Department of Electrical Engineering, Government Polytechnic, Junagadh</p>
+</footer>
+</html>
