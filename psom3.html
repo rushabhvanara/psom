@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Economic Load Dispatch - 3 Plant Simulation</title>
+    <style>
+        :root {
+            --primary: #1e3a8a;
+            --accent: #2563eb;
+            --bg: #f8fafc;
+            --card-bg: #ffffff;
+            --text: #1e293b;
+            --success: #16a34a;
+            --danger: #dc2626;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 20px;
+        }
+	.home-link {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--primary);
+            font-weight: 600;
+            font-size: 0.95rem;
+            padding: 8px 12px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            transition: all 0.2s ease;
+            z-index: 100;
+            border: 1px solid #e2e8f0;
+        }
+
+        .home-link:hover {
+            transform: translateY(-2px);
+            color: var(--accent);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            border-color: var(--accent);
+        }
+
+        .home-link svg {
+            width: 20px;
+            height: 20px;
+        }
+
+
+        .header {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+
+        .header h1 {
+            color: var(--primary);
+            margin-bottom: 5px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        @media (max-width: 900px) {
+            .container { grid-template-columns: 1fr; }
+        }
+
+        .panel {
+            background: var(--card-bg);
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .full-width {
+            grid-column: 1 / -1;
+        }
+
+        h2 {
+            color: var(--primary);
+            font-size: 1.25rem;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 8px;
+            margin-top: 0;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 15px;
+        }
+
+        th, td {
+            padding: 8px;
+            text-align: center;
+            border: 1px solid #cbd5e1;
+        }
+
+        th {
+            background-color: #f1f5f9;
+            color: var(--primary);
+        }
+
+        input[type="number"] {
+            width: 80px;
+            padding: 6px;
+            border: 1px solid #cbd5e1;
+            border-radius: 4px;
+            text-align: center;
+        }
+
+        .control-group {
+            margin-bottom: 15px;
+        }
+
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        input[type="range"] {
+            flex-grow: 1;
+        }
+
+        .btn {
+            background-color: var(--accent);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            font-weight: bold;
+            cursor: pointer;
+            width: 100%;
+            font-size: 1rem;
+            transition: background-color 0.2s;
+        }
+
+        .btn:hover {
+            background-color: #1d4ed8;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 0.9rem;
+            margin-top: 10px;
+        }
+
+        .status-match { background-color: #dcfce7; color: var(--success); }
+        .status-mismatch { background-color: #fee2e2; color: var(--danger); }
+
+        .metric-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .metric-card {
+            background-color: #f8fafc;
+            border: 1px solid #e2e8f0;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .metric-value {
+            font-size: 1.4rem;
+            font-weight: bold;
+            color: var(--primary);
+            margin-top: 5px;
+        }
+
+        .total-cost-card {
+            background-color: #eff6ff;
+            border: 2px solid var(--accent);
+        }
+
+        .total-cost-card .metric-value {
+            color: var(--accent);
+            font-size: 1.8rem;
+        }
+
+        .formula-note {
+            font-size: 0.85rem;
+            color: #64748b;
+            margin-top: 10px;
+        }
+
+        /* Footer Styles */
+        footer {
+            grid-column: 1 / -1; /* Ensures footer spans full width of the grid */
+            margin-top: 40px;
+            padding: 20px;
+            text-align: center;
+            border-top: 1px solid #e2e8f0;
+            color: #64748b;
+        }
+
+        footer a {
+            color: var(--accent);
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        footer a:hover {
+            text-decoration: underline;
+        }
+
+        .heart {
+            color: #ef4444; /* Red color */
+            font-size: 1.2rem;
+            vertical-align: middle;
+        }
+    </style>
+</head>
+<body>
+    <!-- Home Link with Icon and Text -->
+    <a href="https://rushabhvanara.github.io" class="home-link">
+        <svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+            <polyline points="9 22 9 12 15 12 15 22"></polyline>
+        </svg>
+        <span>rushabhvanara.github.io</span>
+    </a>
+
+
+    <div class="header">
+        <h1>Economic Load Dispatch (ELD) Simulator</h1>
+        <p>Power Sharing & Total Cost Optimization for 3 Thermal Generating Units</p>
+    </div>
+
+    <div class="container">
+        
+        <!-- Panel 1: Input Coefficients & Limits -->
+        <div class="panel full-width">
+            <h2>1. Plant Cost Coefficients & Capacity Limits (Cost Equation: F<sub>i</sub> = a<sub>i</sub>P<sub>i</sub>² + b<sub>i</sub>P<sub>i</sub> + c<sub>i</sub> [INR/hr])</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Plant</th>
+                        <th>a<sub>i</sub> (INR/MW²-hr)</th>
+                        <th>b<sub>i</sub> (INR/MW-hr)</th>
+                        <th>c<sub>i</sub> (INR/hr)</th>
+                        <th>P<sub>min</sub> (MW)</th>
+                        <th>P<sub>max</sub> (MW)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Plant 1</strong></td>
+                        <td><input type="number" id="a1" value="0.008" step="0.001"></td>
+                        <td><input type="number" id="b1" value="7.0" step="0.1"></td>
+                        <td><input type="number" id="c1" value="200" step="10"></td>
+                        <td><input type="number" id="p1_min" value="20"></td>
+                        <td><input type="number" id="p1_max" value="250"></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Plant 2</strong></td>
+                        <td><input type="number" id="a2" value="0.009" step="0.001"></td>
+                        <td><input type="number" id="b2" value="6.3" step="0.1"></td>
+                        <td><input type="number" id="c2" value="180" step="10"></td>
+                        <td><input type="number" id="p2_min" value="20"></td>
+                        <td><input type="number" id="p2_max" value="300"></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Plant 3</strong></td>
+                        <td><input type="number" id="a3" value="0.007" step="0.001"></td>
+                        <td><input type="number" id="b3" value="6.8" step="0.1"></td>
+                        <td><input type="number" id="c3" value="140" step="10"></td>
+                        <td><input type="number" id="p3_min" value="20"></td>
+                        <td><input type="number" id="p3_max" value="200"></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Panel 2: Power Controls & Optimization Trigger -->
+        <div class="panel">
+            <h2>2. Total Demand & Power Allocation Controls</h2>
+            
+            <div class="control-group">
+                <label><strong>Total System Load Demand (P<sub>D</sub>):</strong></label>
+                <input type="number" id="pDemand" value="400" min="50" max="750" style="width: 100px; font-weight: bold;" oninput="updateSimulation()"> MW
+            </div>
+
+            <button class="btn" onclick="solveELD()">⚡ Run Optimal Economic Load Dispatch</button>
+
+            <hr style="margin: 20px 0; border: 0; border-top: 1px solid #e2e8f0;">
+
+            <p class="formula-note">Adjust power sliders manually to observe how arbitrary power sharing increases cost compared to optimal ELD:</p>
+
+            <div class="control-group">
+                <label>Plant 1 Output (P<sub>1</sub>): <span id="p1_val">133.3</span> MW</label>
+                <div class="slider-container">
+                    <input type="range" id="p1_slider" step="0.1" oninput="manualSliderChange()">
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label>Plant 2 Output (P<sub>2</sub>): <span id="p2_val">133.3</span> MW</label>
+                <div class="slider-container">
+                    <input type="range" id="p3_slider_fake" style="display:none;"> <!-- placeholder -->
+                    <input type="range" id="p2_slider" step="0.1" oninput="manualSliderChange()">
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label>Plant 3 Output (P<sub>3</sub>): <span id="p3_val">133.3</span> MW</label>
+                <div class="slider-container">
+                    <input type="range" id="p3_slider" step="0.1" oninput="manualSliderChange()">
+                </div>
+            </div>
+
+            <div id="demandStatus" class="status-badge status-match">
+                Total Generation Matches Demand
+            </div>
+        </div>
+
+        <!-- Panel 3: Results Dashboard -->
+        <div class="panel">
+            <h2>3. Economic Dispatch Results</h2>
+            
+            <div class="metric-card total-cost-card">
+                <div>TOTAL GENERATION COST</div>
+                <div class="metric-value" id="totalCost">₹ 0.00 / hr</div>
+            </div>
+
+            <div class="metric-grid">
+                <div class="metric-card">
+                    <div>Plant 1 Cost (F<sub>1</sub>)</div>
+                    <div class="metric-value" id="f1_cost">₹ 0.00 / hr</div>
+                    <small>IC<sub>1</sub>: <span id="ic1">0.0</span> INR/MW-hr</small>
+                </div>
+
+                <div class="metric-card">
+                    <div>Plant 2 Cost (F<sub>2</sub>)</div>
+                    <div class="metric-value" id="f2_cost">₹ 0.00 / hr</div>
+                    <small>IC<sub>2</sub>: <span id="ic2">0.0</span> INR/MW-hr</small>
+                </div>
+
+                <div class="metric-card">
+                    <div>Plant 3 Cost (F<sub>3</sub>)</div>
+                    <div class="metric-value" id="f3_cost">₹ 0.00 / hr</div>
+                    <small>IC<sub>3</sub>: <span id="ic3">0.0</span> INR/MW-hr</small>
+                </div>
+            </div>
+
+            <div style="margin-top: 15px; padding: 10px; background-color: #f1f5f9; border-radius: 6px; font-size: 0.85rem;">
+                <strong>Incremental Cost (IC = dF/dP):</strong> At optimal dispatch, Incremental Costs for all non-bounded generators become equal ($\lambda$).
+            </div>
+        </div>
+        
+        <footer>
+            <p>Made with <span class="heart">❤</span> by <a href="https://rushabhvanara.github.io" target="_blank">Rushabh D. Vanara</a></p>
+            <p>Department of Electrical Engineering, Government Polytechnic, Junagadh</p>
+        </footer>
+
+    </div>
+
+    <script>
+        // Read input coefficients
+        function getInputs() {
+            return {
+                a1: parseFloat(document.getElementById('a1').value),
+                b1: parseFloat(document.getElementById('b1').value),
+                c1: parseFloat(document.getElementById('c1').value),
+                p1Min: parseFloat(document.getElementById('p1_min').value),
+                p1Max: parseFloat(document.getElementById('p1_max').value),
+
+                a2: parseFloat(document.getElementById('a2').value),
+                b2: parseFloat(document.getElementById('b2').value),
+                c2: parseFloat(document.getElementById('c2').value),
+                p2Min: parseFloat(document.getElementById('p2_min').value),
+                p2Max: parseFloat(document.getElementById('p2_max').value),
+
+                a3: parseFloat(document.getElementById('a3').value),
+                b3: parseFloat(document.getElementById('b3').value),
+                c3: parseFloat(document.getElementById('c3').value),
+                p3Min: parseFloat(document.getElementById('p3_min').value),
+                p3Max: parseFloat(document.getElementById('p3_max').value),
+
+                Pd: parseFloat(document.getElementById('pDemand').value)
+            };
+        }
+
+        // Initialize/Update Sliders Ranges based on Plant Limits
+        function setupSliderRanges() {
+            const data = getInputs();
+            
+            const p1 = document.getElementById('p1_slider');
+            p1.min = data.p1Min; p1.max = data.p1Max;
+            
+            const p2 = document.getElementById('p2_slider');
+            p2.min = data.p2Min; p2.max = data.p2Max;
+
+            const p3 = document.getElementById('p3_slider');
+            p3.min = data.p3Min; p3.max = data.p3Max;
+        }
+
+        // Format Numbers as Currency (INR)
+        function formatINR(amount) {
+            return '₹ ' + amount.toLocaleString('en-IN', { maximumFractionDigits: 2, minimumFractionDigits: 2 }) + ' / hr';
+        }
+
+        // Main Calculation Routine
+        function updateSimulation() {
+            setupSliderRanges();
+            const data = getInputs();
+
+            const p1 = parseFloat(document.getElementById('p1_slider').value);
+            const p2 = parseFloat(document.getElementById('p2_slider').value);
+            const p3 = parseFloat(document.getElementById('p3_slider').value);
+
+            // Update UI Slider Text Displays
+            document.getElementById('p1_val').innerText = p1.toFixed(1);
+            document.getElementById('p2_val').innerText = p2.toFixed(1);
+            document.getElementById('p3_val').innerText = p3.toFixed(1);
+
+            // Individual Costs F_i = a_i * P_i^2 + b_i * P_i + c_i
+            const f1 = data.a1 * Math.pow(p1, 2) + data.b1 * p1 + data.c1;
+            const f2 = data.a2 * Math.pow(p2, 2) + data.b2 * p2 + data.c2;
+            const f3 = data.a3 * Math.pow(p3, 2) + data.b3 * p3 + data.c3;
+
+            // Incremental Costs IC_i = 2 * a_i * P_i + b_i
+            const ic1 = 2 * data.a1 * p1 + data.b1;
+            const ic2 = 2 * data.a2 * p2 + data.b2;
+            const ic3 = 2 * data.a3 * p3 + data.b3;
+
+            const totalGen = p1 + p2 + p3;
+            const totalCost = f1 + f2 + f3;
+
+            // Render Output Metrics
+            document.getElementById('f1_cost').innerText = formatINR(f1);
+            document.getElementById('f2_cost').innerText = formatINR(f2);
+            document.getElementById('f3_cost').innerText = formatINR(f3);
+
+            document.getElementById('ic1').innerText = ic1.toFixed(2);
+            document.getElementById('ic2').innerText = ic2.toFixed(2);
+            document.getElementById('ic3').innerText = ic3.toFixed(2);
+
+            document.getElementById('totalCost').innerText = formatINR(totalCost);
+
+            // Demand Mismatch Status Check
+            const statusDiv = document.getElementById('demandStatus');
+            const diff = totalGen - data.Pd;
+            if (Math.abs(diff) < 0.5) {
+                statusDiv.className = "status-badge status-match";
+                statusDiv.innerText = `Total Generation (${totalGen.toFixed(1)} MW) Matches Demand (${data.Pd} MW)`;
+            } else {
+                statusDiv.className = "status-badge status-mismatch";
+                statusDiv.innerText = `Mismatch: Total Gen = ${totalGen.toFixed(1)} MW | Target = ${data.Pd} MW (${diff > 0 ? '+' : ''}${diff.toFixed(1)} MW)`;
+            }
+        }
+
+        function manualSliderChange() {
+            updateSimulation();
+        }
+
+        // Economic Load Dispatch Solver (Equal Incremental Cost Criterion)
+        function solveELD() {
+            setupSliderRanges();
+            const data = getInputs();
+            let plants = [
+                { id: 1, a: data.a1, b: data.b1, c: data.c1, min: data.p1Min, max: data.p1Max, p: 0, fixed: false },
+                { id: 2, a: data.a2, b: data.b2, c: data.c2, min: data.p2Min, max: data.p2Max, p: 0, fixed: false },
+                { id: 3, a: data.a3, b: data.b3, c: data.c3, min: data.p3Min, max: data.p3Max, p: 0, fixed: false }
+            ];
+
+            let demandRemaining = data.Pd;
+            let converged = false;
+            let maxIter = 10;
+
+            // Iterative check for min/max generation limit violations
+            while (!converged && maxIter > 0) {
+                maxIter--;
+                
+                // Lambda calculation = [ P_D + Sum(b_i / 2a_i) ] / [ Sum(1 / 2a_i) ]
+                let sumB_over_2A = 0;
+                let sum1_over_2A = 0;
+
+                plants.forEach(pt => {
+                    if (!pt.fixed) {
+                        sumB_over_2A += pt.b / (2 * pt.a);
+                        sum1_over_2A += 1 / (2 * pt.a);
+                    }
+                });
+
+                let lambda = (demandRemaining + sumB_over_2A) / sum1_over_2A;
+
+                let violationFound = false;
+
+                plants.forEach(pt => {
+                    if (!pt.fixed) {
+                        // Calculate unconstrained power sharing: P_i = (lambda - b_i) / (2 * a_i)
+                        let pCalc = (lambda - pt.b) / (2 * pt.a);
+
+                        if (pCalc < pt.min) {
+                            pt.p = pt.min;
+                            pt.fixed = true;
+                            demandRemaining -= pt.min;
+                            violationFound = true;
+                        } else if (pCalc > pt.max) {
+                            pt.p = pt.max;
+                            pt.fixed = true;
+                            demandRemaining -= pt.max;
+                            violationFound = true;
+                        } else {
+                            pt.p = pCalc;
+                        }
+                    }
+                });
+
+                if (!violationFound) {
+                    converged = true;
+                }
+            }
+
+            // Set sliders to optimal values
+            document.getElementById('p1_slider').value = plants[0].p;
+            document.getElementById('p2_slider').value = plants[1].p;
+            document.getElementById('p3_slider').value = plants[2].p;
+
+            // Recalculate and update UI
+            updateSimulation();
+        }
+
+        // Attach listeners to input coefficient tables
+        const inputs = document.querySelectorAll('input[type="number"]');
+        inputs.forEach(input => {
+            input.addEventListener('input', () => {
+                setupSliderRanges();
+                updateSimulation();
+            });
+        });
+
+        // Initialize simulation on load
+        window.onload = function() {
+            setupSliderRanges();
+            solveELD();
+        };
+    </script>
+</body>
+</html>
