@@ -5,6 +5,320 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PU & Power Flow Calculator</title>
     
+    <!-- MathJax Configuration -->
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']],
+                processEscapes: true
+            }
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+    <style>
+        :root {
+            --primary: #2563eb;
+            --dark: #1e293b;
+            --light-bg: #f8fafc;
+            --border: #e2e8f0;
+            --success: #059669;
+        }
+
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background-color: var(--light-bg);
+            color: var(--dark);
+            margin: 0;
+            line-height: 1.6;
+        }
+
+        .header-nav {
+            background: white;
+            padding: 1rem 2rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+        }
+
+        .home-link {
+            text-decoration: none;
+            color: var(--dark);
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .diagram-container {
+            text-align: center;
+            padding: 1.5rem;
+            background: #fff;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            margin-bottom: 2rem;
+            overflow-x: auto;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+        }
+
+        @media (max-width: 768px) {
+            .grid { grid-template-columns: 1fr; }
+        }
+
+        .input-group { margin-bottom: 1.2rem; }
+        label { 
+            display: flex; 
+            align-items: center;
+            font-size: 0.9rem; 
+            font-weight: 600; 
+            margin-bottom: 0.4rem; 
+            color: #475569; 
+        }
+        
+        /* Ensures Math symbols in labels look clean */
+        label mjx-container { margin: 0 4px !important; }
+
+        input { 
+            width: 100%; 
+            padding: 0.7rem; 
+            border: 1px solid var(--border); 
+            border-radius: 6px; 
+            font-size: 1rem; 
+            box-sizing: border-box; 
+            transition: border 0.2s;
+        }
+        
+        input:focus {
+            outline: none;
+            border-color: var(--primary);
+            ring: 2px solid var(--primary);
+        }
+        
+        button {
+            width: 100%;
+            padding: 1rem;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background 0.2s;
+            margin-top: 10px;
+        }
+
+        button:hover { background: #1d4ed8; }
+
+        .output-box { background: #f1f5f9; border-radius: 8px; padding: 1.5rem; }
+        .output-row { display: flex; justify-content: space-between; padding: 0.6rem 0; border-bottom: 1px solid #cbd5e1; }
+        .output-row:last-child { border-bottom: none; }
+        .output-val { font-weight: 700; color: var(--primary); font-family: monospace; font-size: 1.1rem; }
+
+        .math-display {
+            background: #fff;
+            padding: 1.5rem;
+            border-left: 4px solid var(--primary);
+            overflow-x: auto;
+        }
+
+        footer {
+            background: var(--dark);
+            color: white;
+            text-align: center;
+            padding: 2rem;
+            margin-top: 4rem;
+        }
+
+        footer a { color: #60a5fa; text-decoration: none; }
+        .heart { color: #ef4444; }
+    </style>
+</head>
+<body>
+
+    <nav class="header-nav">
+        <a href="https://rushabhvanara.github.io" class="home-link">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+            <span>rushabhvanara.github.io</span>
+        </a>
+    </nav>
+
+    <div class="container">
+        <h1 style="text-align:center">Per-Unit Calculation & Power Flow</h1>
+
+        <!-- Single Line Diagram SVG -->
+        <div class="diagram-container">
+            <svg width="450" height="120" viewBox="0 0 450 120">
+                <circle cx="50" cy="60" r="20" fill="none" stroke="#333" stroke-width="2"/>
+                <path d="M40 60 Q50 40 60 60 T80 60" fill="none" stroke="#333" transform="translate(-15,0)"/>
+                <text x="30" y="100" font-size="12">Source</text>
+                
+                <line x1="70" y1="60" x2="160" y2="60" stroke="#333" stroke-width="2"/>
+                <rect x="160" y="45" width="80" height="30" fill="#eff6ff" stroke="#2563eb" stroke-width="2"/>
+                <text x="178" y="65" font-size="14" font-weight="bold">Z_act</text>
+                <line x1="240" y1="60" x2="330" y2="60" stroke="#333" stroke-width="2"/>
+                
+                <polygon points="330,45 330,75 360,60" fill="#333"/>
+                <text x="330" y="100" font-size="12">Load</text>
+
+                <path d="M100 50 L140 50" stroke="#059669" stroke-width="2" marker-end="url(#arr)"/>
+                <text x="105" y="40" font-size="12" fill="#059669">I_Line</text>
+                <defs><marker id="arr" markerWidth="10" markerHeight="10" refX="0" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#059669"/></marker></defs>
+            </svg>
+        </div>
+
+        <div class="grid">
+            <!-- Inputs -->
+            <div class="card">
+                <h3>Input Parameters</h3>
+                <div class="input-group">
+                    <label>Base Power ($S_{\text{base}}$) [MVA]</label>
+                    <input type="number" id="sBase" value="100" step="any">
+                </div>
+                <div class="input-group">
+                    <label>Base Voltage ($V_{\text{base}}$) [kV]</label>
+                    <input type="number" id="vBase" value="132" step="any">
+                </div>
+                <div class="input-group">
+                    <label>Actual Impedance ($Z_{\text{act}}$) [$\Omega$]</label>
+                    <input type="number" id="zAct" value="10" step="any">
+                </div>
+                <div class="input-group">
+                    <label>Line Voltage ($V_L$) [kV]</label>
+                    <input type="number" id="vLine" value="132" step="any">
+                </div>
+                <div class="input-group">
+                    <label>Line Current ($I_L$) [A]</label>
+                    <input type="number" id="iLine" value="400" step="any">
+                </div>
+                <div class="input-group">
+                    <label>Power Factor ($\cos \phi$)</label>
+                    <input type="number" id="pf" value="0.8" step="0.01" min="0" max="1">
+                </div>
+                <button type="button" onclick="calculate()">Calculate Now</button>
+            </div>
+
+            <!-- Output Summary -->
+            <div class="card">
+                <h3>Results Summary</h3>
+                <div class="output-box">
+                    <div class="output-row"><span>Base Current ($I_b$)</span> <span id="resIb" class="output-val">--</span></div>
+                    <div class="output-row"><span>Base Impedance ($Z_b$)</span> <span id="resZb" class="output-val">--</span></div>
+                    <div class="output-row"><span>PU Impedance ($Z_{\text{pu}}$)</span> <span id="resZpu" class="output-val">--</span></div>
+                    <div class="output-row"><span>Apparent Power ($S$)</span> <span id="resS" class="output-val">--</span></div>
+                    <div class="output-row"><span>Real Power ($P$)</span> <span id="resP" class="output-val">--</span></div>
+                    <div class="output-row"><span>Reactive Power ($Q$)</span> <span id="resQ" class="output-val">--</span></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Math Steps -->
+        <div id="mathCard" class="card" style="display:none">
+            <h3>Detailed Step-by-Step Calculations</h3>
+            <div id="latexOutput" class="math-display"></div>
+        </div>
+    </div>
+
+    <footer>
+        <p>Made with <span class="heart">❤</span> by <a href="https://rushabhvanara.github.io" target="_blank">Rushabh D. Vanara</a></p>
+        <p>Department of Electrical Engineering, Government Polytechnic, Junagadh</p>
+    </footer>
+
+    <script>
+        function calculate() {
+            try {
+                // Get inputs
+                const Sb = parseFloat(document.getElementById('sBase').value);
+                const Vb = parseFloat(document.getElementById('vBase').value);
+                const Zact = parseFloat(document.getElementById('zAct').value);
+                const Vl = parseFloat(document.getElementById('vLine').value);
+                const Il = parseFloat(document.getElementById('iLine').value);
+                const pf = parseFloat(document.getElementById('pf').value);
+
+                // Validation
+                if (isNaN(Sb) || isNaN(Vb) || isNaN(Zact)) {
+                    alert("Please enter valid numeric values");
+                    return;
+                }
+
+                // Calculations
+                const Ib = (Sb * 1000) / (Math.sqrt(3) * Vb); 
+                const Zb = (Vb * Vb) / Sb;
+                const Zpu = Zact / Zb;
+                const S_mva = (Math.sqrt(3) * Vl * Il) / 1000;
+                const P_mw = S_mva * pf;
+                const sinPhi = Math.sqrt(1 - Math.pow(pf, 2));
+                const Q_mvar = S_mva * sinPhi;
+
+                // Update text results
+                document.getElementById('resIb').innerText = Ib.toFixed(2) + " A";
+                document.getElementById('resZb').innerText = Zb.toFixed(2) + " Ω";
+                document.getElementById('resZpu').innerText = Zpu.toFixed(4) + " pu";
+                document.getElementById('resS').innerText = S_mva.toFixed(2) + " MVA";
+                document.getElementById('resP').innerText = P_mw.toFixed(2) + " MW";
+                document.getElementById('resQ').innerText = Q_mvar.toFixed(2) + " MVAR";
+
+                // LaTeX Formatting (Using double backslashes for JS strings)
+                const latex = `
+                    <p><b>1. Base Current ($I_{\\text{base}}$):</b></p>
+                    \\[ I_{\\text{base}} = \\frac{S_{\\text{base(3\\phi)}}}{\\sqrt{3} \\times V_{\\text{base(L-L)}}} = \\frac{${Sb} \\times 10^3}{\\sqrt{3} \\times ${Vb}} = ${Ib.toFixed(2)} \\text{ A} \\]
+                    
+                    <p><b>2. Base Impedance ($Z_{\\text{base}}$):</b></p>
+                    \\[ Z_{\\text{base}} = \\frac{(V_{\\text{base(L-L)}})^2}{S_{\\text{base(3\\phi)}}} = \\frac{${Vb}^2}{${Sb}} = ${Zb.toFixed(2)} \\, \\Omega \\]
+
+                    <p><b>3. Per-Unit Impedance ($Z_{\\text{pu}}$):</b></p>
+                    \\[ Z_{\\text{pu}} = \\frac{Z_{\\text{actual}}}{Z_{\\text{base}}} = \\frac{${Zact}}{${Zb.toFixed(2)}} = ${Zpu.toFixed(4)} \\text{ pu} \\]
+
+                    <p><b>4. Power Flow Analysis:</b></p>
+                    \\[ S = \\sqrt{3} \\times V_{L} \\times I_{L} = \\sqrt{3} \\times ${Vl} \\times ${Il} \\times 10^{-3} = ${S_mva.toFixed(2)} \\text{ MVA} \\]
+                    \\[ P = S \\times \\cos \\phi = ${S_mva.toFixed(2)} \\times ${pf} = ${P_mw.toFixed(2)} \\text{ MW} \\]
+                    \\[ Q = S \\times \\sin \\phi = ${S_mva.toFixed(2)} \\times ${sinPhi.toFixed(3)} = ${Q_mvar.toFixed(2)} \\text{ MVAR} \\]
+                `;
+
+                const mathCard = document.getElementById('mathCard');
+                const latexOutput = document.getElementById('latexOutput');
+                
+                mathCard.style.display = 'block';
+                latexOutput.innerHTML = latex;
+
+                // Re-render MathJax safely
+                if (window.MathJax && window.MathJax.typesetPromise) {
+                    MathJax.typesetPromise([latexOutput]).catch((err) => console.log(err));
+                }
+            } catch (err) {
+                console.error(err);
+                alert("An error occurred during calculation. Check console for details.");
+            }
+        }
+    </script>
+</body>
+</html><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PU & Power Flow Calculator</title>
+    
     <!-- SAFE ALTERNATIVE: Cloudflare Polyfill Mirror -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/polyfill/3.111.0/polyfill.min.js"></script>
     
